@@ -1,0 +1,318 @@
+import React, { useState, useEffect } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { 
+  Container, 
+  Row, 
+  Col, 
+  Card, 
+  Button, 
+  Form, 
+  InputGroup,
+  Badge,
+  Nav,
+  Alert,
+  ListGroup,
+  Spinner
+} from 'react-bootstrap';
+import './App.css';
+
+function App() {
+  const [jsonData, setJsonData] = useState({
+    people: [],
+    courses: [],
+    enrollments: []
+  })
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [activeTable, setActiveTable] = useState('students');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchAllData()
+  }, [])
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [peopleData, coursesData, enrollmentsData] = await Promise.all([
+        fetch('http://127.0.0.1:8080/api/persone').then(res => res.json()),
+        fetch('http://127.0.0.1:8080/api/corsi').then(res => res.json()),
+        fetch('http://127.0.0.1:8080/api/iscrizioni').then(res => res.json())
+      ])
+
+      setJsonData({
+        people: peopleData,
+        courses: coursesData,
+        enrollments: enrollmentsData
+      })
+    } catch (error) {
+      console.error('Errore nel caricamento dei dati:', error)
+      setError('Si è verificato un errore durante il caricamento dei dati. Riprova più tardi.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!searchQuery) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8080/api/cerca/${searchQuery}`)
+      const data = await response.json()
+      setSearchResults(data)
+    } catch (error) {
+      console.error('Errore nella ricerca:', error)
+      setError('Errore durante la ricerca. Riprova.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const clearSearchResults = () => {
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  const renderPersonInfo = (person) => (
+    <Card className="person-card shadow-sm border-0">
+      <Card.Header className="bg-primary text-white">
+        <h4 className="mb-0">{person.nome} {person.cognome}</h4>
+      </Card.Header>
+      <Card.Body>
+        <div className="d-flex align-items-center mb-3">
+          <Badge bg="info" className="age-badge me-2">Età: {person.eta}</Badge>
+          <span className="text-secondary">Studente</span>
+        </div>
+        
+        <h5 className="section-title">Corsi Frequentati</h5>
+        {person.corsi.length > 0 ? (
+          <ListGroup variant="flush" className="course-list">
+            {person.corsi.map((corso, idx) => (
+              <ListGroup.Item key={idx} className="border-start border-4 border-primary ps-3">
+                <div className="d-flex justify-content-between align-items-center flex-wrap">
+                  <div className="fw-bold">{corso.nome_corso}</div>
+                  <div className="d-flex align-items-center">
+                    <small className="text-muted me-2">Data: {corso.data_iscrizione}</small>
+                    <Badge 
+                      bg={corso.voto >= 18 ? 'success' : corso.voto === null ? 'warning' : 'danger'} 
+                      className="vote-badge-sm"
+                    >
+                      {corso.voto === null ? 'In corso' : `Voto: ${corso.voto}`}
+                    </Badge>
+                  </div>
+                </div>
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
+        ) : (
+          <Alert variant="info">Nessun corso frequentato</Alert>
+        )}
+      </Card.Body>
+    </Card>
+  )
+
+  const getVoteBadgeClass = (voto) => {
+    if (voto === null) return 'warning';
+    return voto >= 18 ? 'success' : 'danger';
+  };
+
+  const getVoteText = (voto) => {
+    if (voto === null) return 'In corso';
+    return `Voto: ${voto}`;
+  };
+
+  if (error) {
+    return (
+      <Container className="py-5">
+        <Alert variant="danger">
+          <Alert.Heading>Errore</Alert.Heading>
+          <p>{error}</p>
+          <Button variant="outline-danger" onClick={fetchAllData}>Riprova</Button>
+        </Alert>
+      </Container>
+    );
+  }
+
+  return (
+    <Container fluid className="dashboard-container py-4">
+      {/* Header */}
+      <Card className="mb-4 shadow header-card border-0">
+        <Card.Body>
+          <Card.Title as="h1" className="header-title">Database Accademia</Card.Title>
+          
+          {/* Search box */}
+          <Form className="mt-3" onSubmit={(e) => { e.preventDefault(); handleSearch(); }}>
+            <InputGroup>
+              <Form.Control
+                type="text"
+                placeholder="Cerca nel database..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <Button variant="primary" onClick={handleSearch} disabled={loading}>
+                {loading ? <Spinner animation="border" size="sm" /> : 'Cerca'}
+              </Button>
+            </InputGroup>
+          </Form>
+        </Card.Body>
+      </Card>
+
+      {/* Main content */}
+      <div className="fade-in">
+        {/* Table controls */}
+        <div className="mb-4 table-navigation">
+          <Nav variant="pills" className="bg-white p-2 rounded shadow-sm">
+            <Nav.Item>
+              <Nav.Link 
+                active={activeTable === 'students'} 
+                onClick={() => setActiveTable('students')}
+              >
+                Studenti
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link 
+                active={activeTable === 'courses'} 
+                onClick={() => setActiveTable('courses')}
+              >
+                Corsi
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link 
+                active={activeTable === 'enrollments'} 
+                onClick={() => setActiveTable('enrollments')}
+              >
+                Iscrizioni
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+        </div>
+
+        {Object.keys(searchResults).length > 0 && (
+          <section className="search-results-section mb-4">
+            <div className="section-header d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-3">
+              <h2 className="mb-0">Risultati Ricerca</h2>
+              <Button variant="outline-secondary" size="sm" onClick={clearSearchResults}>
+                Chiudi Risultati
+              </Button>
+            </div>
+            <Row>
+              {Object.entries(searchResults).map(([key, person]) => (
+                <Col key={key} md={4} className="mb-4">
+                  {renderPersonInfo(person)}
+                </Col>
+              ))}
+            </Row>
+          </section>
+        )}
+
+        {loading && !Object.keys(searchResults).length ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" variant="primary" />
+            <p className="mt-3 text-muted">Caricamento dei dati in corso...</p>
+          </div>
+        ) : (
+          <>
+            {activeTable === 'students' && (
+              <section className="table-section">
+                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                  <h2 className="mb-0">Elenco Studenti</h2>
+                </div>
+                <Row>
+                  {jsonData.people.map((person, index) => (
+                    <Col key={index} md={4} className="mb-4">
+                      <Card className="student-card h-100 shadow-sm hover-effect border-0">
+                        <Card.Body>
+                          <Card.Title className="d-flex justify-content-between align-items-center">
+                            <span>{person[1]} {person[2]}</span>
+                            <Badge bg="info" pill>ID: {person[0]}</Badge>
+                          </Card.Title>
+                          <Card.Text>
+                            <div className="student-details mt-3">
+                              <div className="d-flex align-items-center">
+                                <i className="bi bi-calendar me-2"></i>
+                                <span>Età: {person[3]} anni</span>
+                              </div>
+                            </div>
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </section>
+            )}
+
+            {activeTable === 'courses' && (
+              <section className="table-section">
+                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                  <h2 className="mb-0">Corsi Disponibili</h2>
+                </div>
+                <Row>
+                  {jsonData.courses.map((course, index) => (
+                    <Col key={index} md={4} className="mb-4">
+                      <Card className="course-card h-100 shadow-sm hover-effect border-0">
+                        <Card.Body>
+                          <Card.Title>{course.nome_corso}</Card.Title>
+                          <Card.Subtitle className="mb-3 text-muted">
+                            <i className="bi bi-person me-1"></i> Prof. {course.docente}
+                          </Card.Subtitle>
+                          <Card.Text>
+                            <div className="course-stats">
+                              <Badge bg="light" text="dark">Crediti: {course.crediti}</Badge>
+                              <Badge bg="light" text="dark">Ore: {course.ore}</Badge>
+                              <Badge bg="primary">Iscritti: {course.num_iscritti}</Badge>
+                            </div>
+                          </Card.Text>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </section>
+            )}
+
+            {activeTable === 'enrollments' && (
+              <section className="table-section">
+                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                  <h2 className="mb-0">Iscrizioni</h2>
+                </div>
+                <Row>
+                  {jsonData.enrollments.map((enrollment, index) => (
+                    <Col key={index} md={4} className="mb-4">
+                      <Card className="enrollment-card shadow-sm border-0">
+                        <Card.Header className="border-0 bg-white pt-3">
+                          <Card.Title>{enrollment.nome} {enrollment.cognome}</Card.Title>
+                        </Card.Header>
+                        <Card.Body>
+                          <p className="course-name fw-bold">{enrollment.corso}</p>
+                          <div className="enrollment-details">
+                            <div className="enrollment-date">
+                              <span className="label">Data Iscrizione:</span>
+                              <span className="value">{enrollment.data}</span>
+                            </div>
+                            <Badge 
+                              bg={getVoteBadgeClass(enrollment.voto)}
+                              className="mt-2 vote-badge"
+                            >
+                              {getVoteText(enrollment.voto)}
+                            </Badge>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </section>
+            )}
+          </>
+        )}
+      </div>
+    </Container>
+  )
+}
+
+export default App

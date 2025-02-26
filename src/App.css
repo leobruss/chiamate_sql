@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css");
+
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --background-color: #f5f7fa;
+  --card-background: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --success: #10b981;
+  --error: #ef4444;
+  --border-color: #e5e7eb;
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-headers: 'Poppins', var(--font-primary);
+  --font-mono: 'JetBrains Mono', 'Monaco', monospace;
+  --border-radius-sm: 0.5rem;
+  --border-radius: 0.8rem;
+  --border-radius-lg: 1rem;
+  --shadow-sm: 0 2px 5px rgba(0,0,0,0.08);
+  --shadow-hover: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6, .btn, .nav-link {
+  font-family: var(--font-headers);
+}
+
+#root {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.header {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+.header-card {
+  border-radius: 16px;
+  background-image: linear-gradient(to right, #f9f9ff, #f5f5ff);
+}
+
+.header h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.header-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  background: linear-gradient(90deg, var(--primary-color), #8183fb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.table-navigation .nav-link {
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+}
+
+.table-navigation .nav-link.active {
+  background-color: var(--primary-color);
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.card, .table-card, .person-info-card, .enrollment-card, .course-card {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  transition: all 0.25s ease;
+}
+
+.card-hover:hover, .table-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.hover-effect:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-hover);
+}
+
+.table-grid, .search-results-grid, .courses-grid, .json-display {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 20px;
+}
+
+.table-grid, .search-results-grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.courses-grid {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.json-display {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.vote-badge {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 100px;
+  display: inline-flex;
+  justify-content: center;
+  border-radius: 20px !important;
+}
+
+.vote-badge-sm {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px !important;
+}
+
+.vote-badge.passed { background-color: var(--success); color: white; }
+.vote-badge.failed { background-color: var(--error); color: white; }
+.vote-badge.pending { background-color: #f59e0b; color: white; }
+
+.course-item {
+  background-color: var(--background-color);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+}
+
+.course-name {
+  color: var(--text-primary);
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  color: #333;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-x: auto;
+  padding: 15px;
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 1rem;
+  }
+  
+  .table-grid, .search-results-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-controls {
+    flex-direction: column;
+  }
+  
+  .table-controls button {
+    width: 100%;
+  }
+}
