@@ -6,7 +6,7 @@ api = Flask(__name__)
 
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return response
 
@@ -16,7 +16,7 @@ def handle_preflight():
         response = make_response()
         response.headers.add("Access-Control-Allow-Origin", "http://localhost:5173")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         return response
 
 @api.after_request
@@ -175,6 +175,114 @@ def StampaIscrizioni():
     cursor.close()
     connection.close()
     return jsonify(formatted_result)
+
+@api.route('/api/persone', methods=['GET', 'POST'])
+def manage_persone():
+    if request.method == 'GET':
+        return StampaPersone()
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            connection = ConnectDB()
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO persona (nome, cognome, eta) VALUES (?, ?, ?)",
+                          (data['nome'], data['cognome'], data['eta']))
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@api.route('/api/persone/<int:id>', methods=['DELETE'])
+def delete_persona(id):
+    try:
+        connection = ConnectDB()
+        cursor = connection.cursor()
+        
+        # First delete all related enrollments
+        cursor.execute("DELETE FROM iscrizione WHERE id_persona = ?", (id,))
+        
+        # Then delete the person
+        cursor.execute("DELETE FROM persona WHERE id = ?", (id,))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return jsonify({"success": True, "message": "Studente e relative iscrizioni eliminati con successo"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/api/corsi', methods=['GET', 'POST'])
+def manage_corsi():
+    if request.method == 'GET':
+        return StampaCorsi()
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            connection = ConnectDB()
+            cursor = connection.cursor()
+            cursor.execute("INSERT INTO corso (nome_corso, docente, crediti, ore) VALUES (?, ?, ?, ?)",
+                          (data['nome_corso'], data['docente'], data['crediti'], data['ore']))
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@api.route('/api/corsi/<int:id>', methods=['DELETE'])
+def delete_corso(id):
+    try:
+        connection = ConnectDB()
+        cursor = connection.cursor()
+        # Check if course has enrollments
+        cursor.execute("SELECT COUNT(*) FROM iscrizione WHERE id_corso = ?", (id,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({"error": "Impossibile eliminare un corso con iscrizioni attive"}), 400
+        
+        cursor.execute("DELETE FROM corso WHERE id = ?", (id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/api/iscrizioni', methods=['GET', 'POST'])
+def manage_iscrizioni():
+    if request.method == 'GET':
+        return StampaIscrizioni()
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            connection = ConnectDB()
+            cursor = connection.cursor()
+            
+            # Set voto to NULL if not provided
+            voto = data.get('voto') if data.get('voto') else None
+            
+            cursor.execute("INSERT INTO iscrizione (id_persona, id_corso, data_iscrizione, voto) VALUES (?, ?, ?, ?)",
+                          (data['id_persona'], data['id_corso'], data['data_iscrizione'], voto))
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+@api.route('/api/iscrizioni/<int:id>', methods=['DELETE'])
+def delete_iscrizione(id):
+    try:
+        connection = ConnectDB()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM iscrizione WHERE id = ?", (id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     api.run(host="127.0.0.1", port=8080, debug=True)

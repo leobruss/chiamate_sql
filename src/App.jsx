@@ -12,7 +12,8 @@ import {
   Nav,
   Alert,
   ListGroup,
-  Spinner
+  Spinner,
+  Modal
 } from 'react-bootstrap';
 import './App.css';
 
@@ -27,6 +28,10 @@ function App() {
   const [activeTable, setActiveTable] = useState('students');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+  const [formData, setFormData] = useState({});
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     fetchAllData()
@@ -123,6 +128,86 @@ function App() {
     return `Voto: ${voto}`;
   };
 
+  // Show message temporarily
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  // Open modal for add operations
+  const handleOpenModal = (type) => {
+    setModalType(type);
+    setFormData({});
+    setShowModal(true);
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    setFormData({...formData, [e.target.name]: e.target.value});
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      let endpoint = '';
+      if (modalType === 'addStudent') endpoint = 'persone';
+      else if (modalType === 'addCourse') endpoint = 'corsi';
+      else endpoint = 'iscrizioni';
+      
+      const response = await fetch(`http://127.0.0.1:8080/api/${endpoint}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) throw new Error('Operazione fallita');
+      
+      setShowModal(false);
+      await fetchAllData();
+      setMessage({type: 'success', text: 'Dati aggiunti con successo!'});
+    } catch (error) {
+      setMessage({type: 'danger', text: error.message});
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete item
+  const handleDelete = async (type, id) => {
+    let confirmMessage = 'Sei sicuro di voler eliminare questo elemento?';
+    
+    // Special confirmation message for students
+    if (type === 'persone') {
+      confirmMessage = 'Sei sicuro di voler eliminare questo studente? Verranno eliminate anche tutte le sue iscrizioni ai corsi.';
+    }
+    
+    if (!window.confirm(confirmMessage)) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8080/api/${type}/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Eliminazione fallita');
+      }
+      
+      await fetchAllData();
+      setMessage({type: 'success', text: 'Elemento eliminato con successo!'});
+    } catch (error) {
+      setMessage({type: 'danger', text: error.message});
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (error) {
     return (
       <Container className="py-5">
@@ -158,6 +243,13 @@ function App() {
           </Form>
         </Card.Body>
       </Card>
+
+      {/* Status message */}
+      {message && (
+        <Alert variant={message.type} className="mb-3">
+          {message.text}
+        </Alert>
+      )}
 
       {/* Main content */}
       <div className="fade-in">
@@ -218,8 +310,11 @@ function App() {
           <>
             {activeTable === 'students' && (
               <section className="table-section">
-                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                <div className="section-header d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-3">
                   <h2 className="mb-0">Elenco Studenti</h2>
+                  <Button variant="success" onClick={() => handleOpenModal('addStudent')}>
+                    <i className="bi bi-plus-circle"></i> Nuovo
+                  </Button>
                 </div>
                 <Row>
                   {jsonData.people.map((person, index) => (
@@ -239,6 +334,11 @@ function App() {
                             </div>
                           </Card.Text>
                         </Card.Body>
+                        <Card.Footer className="bg-transparent border-0 text-end">
+                          <Button variant="outline-danger" size="sm" onClick={() => handleDelete('persone', person[0])}>
+                            <i className="bi bi-trash"></i> Elimina
+                          </Button>
+                        </Card.Footer>
                       </Card>
                     </Col>
                   ))}
@@ -248,8 +348,11 @@ function App() {
 
             {activeTable === 'courses' && (
               <section className="table-section">
-                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                <div className="section-header d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-3">
                   <h2 className="mb-0">Corsi Disponibili</h2>
+                  <Button variant="success" onClick={() => handleOpenModal('addCourse')}>
+                    <i className="bi bi-plus-circle"></i> Nuovo
+                  </Button>
                 </div>
                 <Row>
                   {jsonData.courses.map((course, index) => (
@@ -268,6 +371,17 @@ function App() {
                             </div>
                           </Card.Text>
                         </Card.Body>
+                        <Card.Footer className="bg-transparent border-0 text-end">
+                          <Button 
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => handleDelete('corsi', course.id || index+1)}
+                            disabled={course.num_iscritti > 0}
+                            title={course.num_iscritti > 0 ? "Impossibile eliminare un corso con iscrizioni" : ""}
+                          >
+                            <i className="bi bi-trash"></i> Elimina
+                          </Button>
+                        </Card.Footer>
                       </Card>
                     </Col>
                   ))}
@@ -277,8 +391,11 @@ function App() {
 
             {activeTable === 'enrollments' && (
               <section className="table-section">
-                <div className="section-header bg-white p-3 rounded shadow-sm mb-3">
+                <div className="section-header d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm mb-3">
                   <h2 className="mb-0">Iscrizioni</h2>
+                  <Button variant="success" onClick={() => handleOpenModal('addEnrollment')}>
+                    <i className="bi bi-plus-circle"></i> Nuova
+                  </Button>
                 </div>
                 <Row>
                   {jsonData.enrollments.map((enrollment, index) => (
@@ -302,6 +419,15 @@ function App() {
                             </Badge>
                           </div>
                         </Card.Body>
+                        <Card.Footer className="bg-transparent border-0 text-end">
+                          <Button 
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => handleDelete('iscrizioni', enrollment.id || index+1)}
+                          >
+                            <i className="bi bi-trash"></i> Elimina
+                          </Button>
+                        </Card.Footer>
                       </Card>
                     </Col>
                   ))}
@@ -311,6 +437,104 @@ function App() {
           </>
         )}
       </div>
+
+      {/* Modal for adding items */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {modalType === 'addStudent' ? 'Aggiungi Studente' : 
+             modalType === 'addCourse' ? 'Aggiungi Corso' : 'Aggiungi Iscrizione'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            {modalType === 'addStudent' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nome</Form.Label>
+                  <Form.Control name="nome" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Cognome</Form.Label>
+                  <Form.Control name="cognome" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Età</Form.Label>
+                  <Form.Control name="eta" type="number" min="18" max="100" onChange={handleInputChange} required />
+                </Form.Group>
+              </>
+            )}
+            
+            {modalType === 'addCourse' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nome Corso</Form.Label>
+                  <Form.Control name="nome_corso" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Docente</Form.Label>
+                  <Form.Control name="docente" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Crediti</Form.Label>
+                  <Form.Control name="crediti" type="number" min="1" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Ore</Form.Label>
+                  <Form.Control name="ore" type="number" min="1" onChange={handleInputChange} required />
+                </Form.Group>
+              </>
+            )}
+            
+            {modalType === 'addEnrollment' && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label>Studente</Form.Label>
+                  <Form.Select name="id_persona" onChange={handleInputChange} required>
+                    <option value="">Seleziona studente...</option>
+                    {jsonData.people.map((p, i) => (
+                      <option key={i} value={p[0]}>
+                        {p[1]} {p[2]}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Corso</Form.Label>
+                  <Form.Select name="id_corso" onChange={handleInputChange} required>
+                    <option value="">Seleziona corso...</option>
+                    {jsonData.courses.map((c, i) => (
+                      <option key={i} value={c.id || i+1}>
+                        {c.nome_corso}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Data Iscrizione</Form.Label>
+                  <Form.Control name="data_iscrizione" type="date" onChange={handleInputChange} required />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Voto (opzionale)</Form.Label>
+                  <Form.Control name="voto" type="number" min="18" max="30" onChange={handleInputChange} />
+                  <Form.Text className="text-muted">
+                    Lascia vuoto se il corso è ancora in corso
+                  </Form.Text>
+                </Form.Group>
+              </>
+            )}
+            
+            <div className="d-flex justify-content-end mt-3">
+              <Button variant="secondary" className="me-2" onClick={() => setShowModal(false)}>
+                Annulla
+              </Button>
+              <Button variant="primary" type="submit" disabled={loading}>
+                {loading ? <Spinner animation="border" size="sm" /> : 'Salva'}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
     </Container>
   )
 }
